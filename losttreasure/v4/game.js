@@ -295,6 +295,8 @@ class Game {
           }
         });
         object.castShadow = true;
+        const scl = 0.6;
+        object.scale.set(scl, scl, scl);
 
         game.player.mixer = object.mixer;
         game.player.root = object.mixer.getRoot();
@@ -335,6 +337,8 @@ class Game {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.gammaOutput = true;
     this.renderer.gammaFactor = 2.2;
+    this.renderer.physicallyCorrectLights = true;
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
@@ -367,8 +371,6 @@ class Game {
         $(id).show();
       });
     }
-
-    // mixer
   }
 
   loadUSB(loader) {
@@ -411,8 +413,9 @@ class Game {
         game.doors = [];
         game.fans = [];
 
+        // console.log(object);
+
         object.receiveShadow = true;
-        object.scale.set(1.2, 1.2, 1.2);
         object.name = "Environment";
         let door = { trigger: null, proxy: [], doors: [] };
 
@@ -428,16 +431,13 @@ class Game {
               child.material.visible = false;
               door.proxy.push(child);
               checkDoor();
-            } else if (child.name.includes("door")) {
-              door.doors.push(child);
-              checkDoor();
-            } else if (child.name.includes("fan")) {
-              game.fans.push(child);
-            }
-          } else {
-            if (child.name.includes("Door-null")) {
-              door.trigger = child;
-              checkDoor();
+            } else if (child.name.includes("laptop")) {
+              game.laptop = child;
+            } else if (child.name.includes("tv")) {
+              game.tv = child;
+              console.log(child.material);
+            } else if (child.name.includes("poster")) {
+              game.poster = child;
             }
           }
 
@@ -480,7 +480,7 @@ class Game {
   }
 
   playerControl(forward, turn) {
-    console.log(`playerControl(${forward}), ${turn}`);
+    // console.log(`playerControl(${forward}), ${turn}`);
     turn = -turn;
 
     if (forward == 0 && turn == 0) {
@@ -518,7 +518,6 @@ class Game {
     loader.load(
       `${this.assetsPath}fbx/${anim}.fbx`,
       function (object) {
-        console.log(object);
         game.player[anim] = object.animations[0];
 
         // Filter out track names
@@ -625,7 +624,6 @@ class Game {
   set action(name) {
     if (this.player.action == name) return;
     const anim = this.player[name];
-    console.log("action", name);
     const action = this.player.mixer.clipAction(anim, this.player.root);
     this.player.mixer.stopAllAction();
     this.player.action = name;
@@ -764,9 +762,8 @@ class Game {
         pos = this.cameraTarget.target;
       } else {
         pos = this.player.object.position.clone();
-        pos.y += 60;
+        pos.y += 60; // Edit this line to adjust camera Y position
       }
-      pos.y += 40;
       this.camera.lookAt(pos);
     }
 
@@ -818,6 +815,30 @@ class Game {
         fan.rotateZ(dt);
       });
       this.sfx.fan.volume = vol;
+    }
+
+    if (this.tv !== undefined) {
+      const dist = this.tv.position.distanceTo(game.player.object.position);
+      if (dist < 130) {
+        // near tv
+        console.log("tv");
+      }
+    }
+
+    if (this.laptop !== undefined) {
+      const dist = this.laptop.position.distanceTo(game.player.object.position);
+      if (dist < 80) {
+        // near laptop
+        console.log("laptop");
+      }
+    }
+
+    if (this.poster !== undefined) {
+      const dist = this.poster.position.distanceTo(game.player.object.position);
+      if (dist < 140) {
+        // near laptop
+        console.log("poster");
+      }
     }
 
     this.renderer.render(this.scene, this.camera);
