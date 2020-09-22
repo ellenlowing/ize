@@ -29,6 +29,7 @@ class Game {
     this.cameraFade = 0.05;
     this.mute = false;
     this.collect = [];
+    this.tvTextureAnim;
 
     this.messages = {
       text: ["Welcome to LostTreasure", "GOOD LUCK!"],
@@ -291,7 +292,6 @@ class Game {
           game.action = "ize_idle_rig";
           if (game.player.cameras.active == game.player.cameras.collect) {
             game.activeCamera = game.player.cameras.back;
-            // game.toggleBriefcase();
           }
         });
         object.castShadow = true;
@@ -367,8 +367,9 @@ class Game {
     for (let item of menuItems) {
       item.addEventListener("click", () => {
         $(".section").hide();
-        let id = item.children[0].getAttribute("href");
-        $(id).show();
+        let id = item.children[0].getAttribute("href").substring(1);
+        console.log(id);
+        $(`#section-${id}`).show();
       });
     }
   }
@@ -413,11 +414,21 @@ class Game {
         game.doors = [];
         game.fans = [];
 
-        // console.log(object);
-
         object.receiveShadow = true;
         object.name = "Environment";
         let door = { trigger: null, proxy: [], doors: [] };
+
+        let video = document.getElementById("video");
+        video.play();
+
+        let videoTexture = new THREE.VideoTexture(video);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.maxFilter = THREE.LinearFilter;
+
+        let videoMaterial = new THREE.MeshBasicMaterial({
+          map: videoTexture,
+          overdraw: true,
+        });
 
         object.traverse(function (child) {
           if (child.isMesh) {
@@ -435,6 +446,7 @@ class Game {
               game.laptop = child;
             } else if (child.name.includes("tv")) {
               game.tv = child;
+              child.material = videoMaterial;
               console.log(child.material);
             } else if (child.name.includes("poster")) {
               game.poster = child;
@@ -543,15 +555,6 @@ class Game {
           game.action = "ize_idle_rig";
           game.initPlayerPosition();
           game.mode = game.modes.ACTIVE;
-          const overlay = document.getElementById("overlay");
-          overlay.classList.add("fade-in");
-          overlay.addEventListener(
-            "animationend",
-            function (evt) {
-              evt.target.style.display = "none";
-            },
-            false
-          );
         }
       },
       null,
@@ -819,9 +822,11 @@ class Game {
 
     if (this.tv !== undefined) {
       const dist = this.tv.position.distanceTo(game.player.object.position);
-      if (dist < 130) {
+      if (dist < 150) {
         // near tv
-        console.log("tv");
+        $("#menu-video, #bottom-title-video").addClass("highlighted");
+      } else {
+        $("#menu-video, #bottom-title-video").removeClass("highlighted");
       }
     }
 
@@ -829,15 +834,19 @@ class Game {
       const dist = this.laptop.position.distanceTo(game.player.object.position);
       if (dist < 80) {
         // near laptop
-        console.log("laptop");
+        $("#menu-contact, #bottom-title-contact").addClass("highlighted");
+      } else {
+        $("#menu-contact, #bottom-title-contact").removeClass("highlighted");
       }
     }
 
     if (this.poster !== undefined) {
       const dist = this.poster.position.distanceTo(game.player.object.position);
       if (dist < 140) {
-        // near laptop
-        console.log("poster");
+        // near poster
+        $("#menu-tour, #bottom-title-tour").addClass("highlighted");
+      } else {
+        $("#menu-tour, #bottom-title-tour").removeClass("highlighted");
       }
     }
 
@@ -850,4 +859,45 @@ class Game {
     const msg = console.error(JSON.stringify(error));
     console.error(error.message);
   }
+}
+
+function TextureAnimator(
+  texture,
+  tilesHoriz,
+  tilesVert,
+  numTiles,
+  tileDispDuration
+) {
+  // note: texture passed by reference, will be updated by the update function.
+
+  this.tilesHorizontal = tilesHoriz;
+  this.tilesVertical = tilesVert;
+  // how many images does this spritesheet contain?
+  //  usually equals tilesHoriz * tilesVert, but not necessarily,
+  //  if there at blank tiles at the bottom of the spritesheet.
+  this.numberOfTiles = numTiles;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1 / this.tilesHorizontal, 1 / this.tilesVertical);
+
+  // how long should each image be displayed?
+  this.tileDisplayDuration = tileDispDuration;
+
+  // how long has the current image been displayed?
+  this.currentDisplayTime = 0;
+
+  // which image is currently being displayed?
+  this.currentTile = 0;
+
+  this.update = function (milliSec) {
+    this.currentDisplayTime += milliSec;
+    while (this.currentDisplayTime > this.tileDisplayDuration) {
+      this.currentDisplayTime -= this.tileDisplayDuration;
+      this.currentTile++;
+      if (this.currentTile == this.numberOfTiles) this.currentTile = 0;
+      var currentColumn = this.currentTile % this.tilesHorizontal;
+      texture.offset.x = currentColumn / this.tilesHorizontal;
+      var currentRow = Math.floor(this.currentTile / this.tilesHorizontal);
+      texture.offset.y = currentRow / this.tilesVertical;
+    }
+  };
 }
