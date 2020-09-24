@@ -19,6 +19,7 @@ class Game {
     this.camera;
     this.scene;
     this.renderer;
+    this.composer;
     this.cellSize = 16;
     this.interactive = false;
     this.levelIndex = 0;
@@ -29,7 +30,8 @@ class Game {
     this.cameraFade = 0.05;
     this.mute = false;
     this.collect = [];
-    this.tvTextureAnim;
+    this.highlighted;
+    this.outlinePass;
 
     this.messages = {
       text: ["Welcome to LostTreasure", "GOOD LUCK!"],
@@ -346,6 +348,36 @@ class Game {
     this.renderer.shadowMapDebug = true;
     this.container.appendChild(this.renderer.domElement);
 
+    // postprocessing
+    this.composer = new THREE.EffectComposer(this.renderer);
+    let renderPass = new THREE.RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderPass);
+
+    this.outlinePass = new THREE.OutlinePass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      this.scene,
+      this.camera
+    );
+    // this.outlinePass.renderToScreen = true;
+    this.composer.addPass(this.outlinePass);
+
+    this.effectFXAA = new THREE.ShaderPass(THREE.FXAAShader);
+    this.effectFXAA.uniforms["resolution"].value.set(
+      1 / window.innerWidth,
+      1 / window.innerHeight
+    );
+    this.effectFXAA.renderToScreen = true;
+    this.composer.addPass(this.effectFXAA);
+
+    // let effectGrayScale = new THREE.ShaderPass(THREE.LuminosityShader);
+    // this.composer.addPass(effectGrayScale);
+
+    // let effectSobel = new THREE.ShaderPass(THREE.SobelOperatorShader);
+    // effectSobel.renderToScreen = true;
+    // effectSobel.uniforms.resolution.value.x = window.innerWidth;
+    // effectSobel.uniforms.resolution.value.y = window.innerHeight;
+    // this.composer.addPass(effectSobel);
+
     window.addEventListener(
       "resize",
       function () {
@@ -378,15 +410,17 @@ class Game {
     const game = this;
 
     loader.load(
-      `${this.assetsPath}fbx/usb.fbx`,
+      `${this.assetsPath}fbx/laptop.fbx`,
       function (object) {
         game.scene.add(object);
 
-        const scale = 0.2;
+        const scale = 1;
         object.scale.set(scale, scale, scale);
-        object.name = "usb";
-        object.position.set(-416, 0.8, -472);
+        object.name = "laptop";
+        object.position.set(0, 100, 40);
         object.castShadow = true;
+
+        game.outlinePass.selectedObjects = [object];
 
         game.collect.push(object);
 
@@ -447,7 +481,6 @@ class Game {
             } else if (child.name.includes("tv")) {
               game.tv = child;
               child.material = videoMaterial;
-              console.log(child.material);
             } else if (child.name.includes("poster")) {
               game.poster = child;
             }
@@ -551,7 +584,6 @@ class Game {
           game.loadNextAnim(loader);
         } else {
           delete game.anims;
-          console.log("ize_idle_rig");
           game.action = "ize_idle_rig";
           game.initPlayerPosition();
           game.mode = game.modes.ACTIVE;
@@ -622,6 +654,12 @@ class Game {
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
+
+    this.effectFXAA.uniforms["resolution"].value.set(
+      1 / window.innerWidth,
+      1 / window.innerHeight
+    );
   }
 
   set action(name) {
@@ -825,8 +863,14 @@ class Game {
       if (dist < 150) {
         // near tv
         $("#menu-video, #bottom-title-video").addClass("highlighted");
+        this.highlighted = "video";
+        this.outlinePass.selectedObjects = [this.tv];
       } else {
         $("#menu-video, #bottom-title-video").removeClass("highlighted");
+        if (this.highlighted === "video") {
+          this.outlinePass.selectedObjects = [];
+          this.highlighted = "";
+        }
       }
     }
 
@@ -835,8 +879,14 @@ class Game {
       if (dist < 80) {
         // near laptop
         $("#menu-contact, #bottom-title-contact").addClass("highlighted");
+        this.highlighted = "contact";
+        this.outlinePass.selectedObjects = [this.laptop];
       } else {
         $("#menu-contact, #bottom-title-contact").removeClass("highlighted");
+        if (this.highlighted === "contact") {
+          this.outlinePass.selectedObjects = [];
+          this.highlighted = "";
+        }
       }
     }
 
@@ -845,12 +895,19 @@ class Game {
       if (dist < 140) {
         // near poster
         $("#menu-tour, #bottom-title-tour").addClass("highlighted");
+        this.highlighted = "tour";
+        this.outlinePass.selectedObjects = [this.poster];
       } else {
         $("#menu-tour, #bottom-title-tour").removeClass("highlighted");
+        if (this.highlighted === "tour") {
+          this.outlinePass.selectedObjects = [];
+          this.highlighted = "";
+        }
       }
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
+    // this.renderer.render(this.scene, this.camera);
 
     if (this.stats != undefined) this.stats.update();
   }
@@ -859,45 +916,4 @@ class Game {
     const msg = console.error(JSON.stringify(error));
     console.error(error.message);
   }
-}
-
-function TextureAnimator(
-  texture,
-  tilesHoriz,
-  tilesVert,
-  numTiles,
-  tileDispDuration
-) {
-  // note: texture passed by reference, will be updated by the update function.
-
-  this.tilesHorizontal = tilesHoriz;
-  this.tilesVertical = tilesVert;
-  // how many images does this spritesheet contain?
-  //  usually equals tilesHoriz * tilesVert, but not necessarily,
-  //  if there at blank tiles at the bottom of the spritesheet.
-  this.numberOfTiles = numTiles;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1 / this.tilesHorizontal, 1 / this.tilesVertical);
-
-  // how long should each image be displayed?
-  this.tileDisplayDuration = tileDispDuration;
-
-  // how long has the current image been displayed?
-  this.currentDisplayTime = 0;
-
-  // which image is currently being displayed?
-  this.currentTile = 0;
-
-  this.update = function (milliSec) {
-    this.currentDisplayTime += milliSec;
-    while (this.currentDisplayTime > this.tileDisplayDuration) {
-      this.currentDisplayTime -= this.tileDisplayDuration;
-      this.currentTile++;
-      if (this.currentTile == this.numberOfTiles) this.currentTile = 0;
-      var currentColumn = this.currentTile % this.tilesHorizontal;
-      texture.offset.x = currentColumn / this.tilesHorizontal;
-      var currentRow = Math.floor(this.currentTile / this.tilesHorizontal);
-      texture.offset.y = currentRow / this.tilesVertical;
-    }
-  };
 }
