@@ -5,22 +5,6 @@ body {
   margin: 0px;
   overflow: hidden;
 }
-
-#action-btn {
-  position: absolute;
-  left: 50%;
-  bottom: 5px;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  background: #3b53a2;
-  font-size: 25px;
-  color: #fff;
-  transform: translateX(-50%);
-  z-index: 9;
-}
-
 .fade-in {
   animation-name: fade-in;
   animation-duration: 2s;

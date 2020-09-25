@@ -29,14 +29,8 @@ class Game {
     this.debugPhysics = false;
     this.cameraFade = 0.05;
     this.mute = false;
-    this.collect = [];
     this.highlighted;
     this.outlinePass;
-
-    this.messages = {
-      text: ["Welcome to LostTreasure", "GOOD LUCK!"],
-      index: 0,
-    };
 
     if (localStorage && !this.debug) {
       //const levelIndex = Number(localStorage.getItem('levelIndex'));
@@ -56,14 +50,8 @@ class Game {
 
     const options = {
       assets: [
-        `${this.assetsPath}sfx/gliss.${sfxExt}`,
-        `${this.assetsPath}sfx/factory.${sfxExt}`,
-        `${this.assetsPath}sfx/button.${sfxExt}`,
-        `${this.assetsPath}sfx/door.${sfxExt}`,
-        `${this.assetsPath}sfx/fan.${sfxExt}`,
         `${this.assetsPath}fbx/environment4.fbx`,
         `${this.assetsPath}fbx/ize_walk.fbx`,
-        `${this.assetsPath}fbx/usb.fbx`,
       ],
       oncomplete: function () {
         game.init();
@@ -77,24 +65,11 @@ class Game {
 
     this.mode = this.modes.PRELOAD;
 
-    this.actionBtn = document.getElementById("action-btn");
-
     this.clock = new THREE.Clock();
 
     //this.init();
     //this.animate();
     const preloader = new Preloader(options);
-  }
-
-  toggleBriefcase() {
-    const briefcase = document.getElementById("briefcase");
-    const open = briefcase.style.opacity > 0;
-
-    if (open) {
-      briefcase.style.opacity = "0";
-    } else {
-      briefcase.style.opacity = "1";
-    }
   }
 
   toggleSound() {
@@ -119,67 +94,6 @@ class Game {
     if (this.onAction !== undefined) {
       if (this.onAction.action != undefined) {
         this.action = this.onAction.action;
-      }
-    }
-
-    const game = this;
-
-    if (this.onAction.mode !== undefined) {
-      switch (this.onAction.mode) {
-        case "open-doors":
-          this.sfx.door.play();
-          this.sfx.button.play();
-          const door = this.doors[this.onAction.index];
-          const left = door.doors[0];
-          const right = door.doors[1];
-          this.cameraTarget = {
-            position: left.position.clone(),
-            target: left.position.clone(),
-          };
-          this.cameraTarget.position.y += 150;
-          this.cameraTarget.position.x -= 950;
-          //target, channel, endValue, duration, oncomplete, easing="inOutQuad"){
-          this.tweens.push(
-            new Tween(
-              left.position,
-              "z",
-              left.position.z - 240,
-              2,
-              function () {
-                game.tweens.splice(game.tweens.indexOf(this), 1);
-              }
-            )
-          );
-          this.tweens.push(
-            new Tween(
-              right.position,
-              "z",
-              right.position.z + 240,
-              2,
-              function () {
-                game.tweens.splice(game.tweens.indexOf(this), 1);
-                delete game.cameraTarget;
-                const door = game.doors[this.onAction.index];
-                const left = door.doors[0];
-                const right = door.doors[1];
-                const leftProxy = door.proxy[0];
-                const rightProxy = door.proxy[1];
-                leftProxy.position = left.position.clone();
-                rightProxy.position = right.position.clone();
-              }
-            )
-          );
-          break;
-        case "collect":
-          this.activeCamera = this.player.cameras.collect;
-          this.collect[this.onAction.index].visible = false;
-          if (this.collected == undefined) this.collected = [];
-          this.collected.push(this.onAction.index);
-          document.getElementById("briefcase").children[0].children[0].children[
-            this.onAction.index
-          ].children[0].src = this.onAction.src;
-
-          break;
       }
     }
   }
@@ -279,9 +193,6 @@ class Game {
         object.mixer = new THREE.AnimationMixer(object);
         object.mixer.addEventListener("finished", function (e) {
           game.action = "ize_idle_rig";
-          if (game.player.cameras.active == game.player.cameras.collect) {
-            game.activeCamera = game.player.cameras.back;
-          }
         });
         object.castShadow = true;
         const scl = 0.6;
@@ -393,38 +304,6 @@ class Game {
     }
   }
 
-  loadUSB(loader) {
-    const game = this;
-
-    loader.load(
-      `${this.assetsPath}fbx/laptop.fbx`,
-      function (object) {
-        game.scene.add(object);
-
-        const scale = 1;
-        object.scale.set(scale, scale, scale);
-        object.name = "laptop";
-        object.position.set(0, 100, 40);
-        object.castShadow = true;
-
-        game.outlinePass.selectedObjects = [object];
-
-        game.collect.push(object);
-
-        object.traverse(function (child) {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-
-        game.loadNextAnim(loader);
-      },
-      null,
-      this.onError
-    );
-  }
-
   loadEnvironment(loader) {
     const game = this;
 
@@ -432,12 +311,10 @@ class Game {
       `${this.assetsPath}fbx/environment4.fbx`,
       function (object) {
         game.scene.add(object);
-        game.doors = [];
         game.fans = [];
 
         object.receiveShadow = true;
         object.name = "Environment";
-        let door = { trigger: null, proxy: [], doors: [] };
 
         let video = document.getElementById("video");
         video.play();
@@ -470,17 +347,6 @@ class Game {
               child.material = videoMaterial;
             } else if (child.name.includes("poster")) {
               game.poster = child;
-            }
-          }
-
-          function checkDoor() {
-            if (
-              door.trigger !== null &&
-              door.proxy.length == 2 &&
-              door.doors.length == 2
-            ) {
-              game.doors.push(Object.assign({}, door));
-              door = { trigger: null, proxy: [], doors: [] };
             }
           }
         });
@@ -795,42 +661,7 @@ class Game {
       this.camera.lookAt(pos);
     }
 
-    this.actionBtn.style = "display:none;";
     let trigger = false;
-
-    if (this.doors !== undefined) {
-      this.doors.forEach(function (door) {
-        if (
-          game.player.object.position.distanceTo(door.trigger.position) < 100
-        ) {
-          game.actionBtn.style = "display:block;";
-          game.onAction = {
-            action: "push-button",
-            mode: "open-doors",
-            index: 0,
-          };
-          trigger = true;
-        }
-      });
-    }
-
-    if (this.collect !== undefined && !trigger) {
-      this.collect.forEach(function (object) {
-        if (
-          object.visible &&
-          game.player.object.position.distanceTo(object.position) < 100
-        ) {
-          game.actionBtn.style = "display:block;";
-          game.onAction = {
-            action: "gather-objects",
-            mode: "collect",
-            index: 0,
-            src: "usb.jpg",
-          };
-          trigger = true;
-        }
-      });
-    }
 
     if (!trigger) delete this.onAction;
 
