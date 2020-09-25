@@ -37,9 +37,7 @@ class JoyStick {
       }
     }
 
-    if (this.mobileMode) {
-      console.log("is mobile");
-    } else {
+    if (!this.mobileMode) {
       thumb.style.display = "none";
       circle.style.display = "none";
     }
@@ -104,7 +102,7 @@ class JoyStick {
             rightKey = false;
             break;
         }
-        joystick.up(evt);
+        joystick.move(evt);
       };
     }
   }
@@ -145,14 +143,12 @@ class JoyStick {
     } else {
       if (upKey) {
         forward = 1;
+      } else if (downKey) {
+        forward = -1;
       }
       if (leftKey) {
         turn = -1;
-      }
-      if (downKey) {
-        forward = -1;
-      }
-      if (rightKey) {
+      } else if (rightKey) {
         turn = 1;
       }
     }
@@ -165,12 +161,12 @@ class JoyStick {
     if (this.mobileMode) {
       document.ontouchmove = null;
       document.touchend = null;
+      this.domElement.style.top = `${this.origin.top}px`;
+      this.domElement.style.left = `${this.origin.left}px`;
     } else {
       document.onkeydown = null;
       document.onkeyup = null;
     }
-    this.domElement.style.top = `${this.origin.top}px`;
-    this.domElement.style.left = `${this.origin.left}px`;
 
     this.onMove.call(this.game, 0, 0);
   }
