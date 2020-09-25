@@ -25,7 +25,7 @@ class Game {
     this.levelIndex = 0;
     this._hints = 0;
     this.score = 0;
-    this.debug = false;
+    this.debug = true;
     this.debugPhysics = false;
     this.cameraFade = 0.05;
     this.mute = false;
@@ -76,19 +76,6 @@ class Game {
     });
 
     this.mode = this.modes.PRELOAD;
-
-    // document.getElementById("camera-btn").onclick = function () {
-    //   game.switchCamera();
-    // };
-    // document.getElementById("briefcase-btn").onclick = function () {
-    //   game.toggleBriefcase();
-    // };
-    // document.getElementById("action-btn").onclick = function () {
-    //   game.contextAction();
-    // };
-    // document.getElementById("sfx-btn").onclick = function () {
-    //   game.toggleSound();
-    // };
 
     this.actionBtn = document.getElementById("action-btn");
 
@@ -358,7 +345,7 @@ class Game {
       this.scene,
       this.camera
     );
-    // this.outlinePass.renderToScreen = true;
+    this.outlinePass.renderToScreen = true;
     this.composer.addPass(this.outlinePass);
 
     this.effectFXAA = new THREE.ShaderPass(THREE.FXAAShader);
@@ -369,9 +356,10 @@ class Game {
     this.effectFXAA.renderToScreen = true;
     this.composer.addPass(this.effectFXAA);
 
-    // let effectGrayScale = new THREE.ShaderPass(THREE.LuminosityShader);
-    // this.composer.addPass(effectGrayScale);
-
+    // let horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+    // this.composer.addPass(horizontalBlur);
+    // let verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+    // this.composer.addPass(verticalBlur);
     // let effectSobel = new THREE.ShaderPass(THREE.SobelOperatorShader);
     // effectSobel.renderToScreen = true;
     // effectSobel.uniforms.resolution.value.x = window.innerWidth;
@@ -400,7 +388,6 @@ class Game {
       item.addEventListener("click", () => {
         $(".section").hide();
         let id = item.children[0].getAttribute("href").substring(1);
-        console.log(id);
         $(`#section-${id}`).show();
       });
     }
