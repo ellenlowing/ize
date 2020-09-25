@@ -378,7 +378,7 @@ class Game {
   }
 
   playerControl(forward, turn) {
-    // console.log(`playerControl(${forward}), ${turn}`);
+    console.log(`playerControl(${forward}), ${turn}`);
     turn = -turn;
 
     if (forward == 0 && turn == 0) {
